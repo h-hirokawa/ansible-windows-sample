@@ -1,0 +1,55 @@
+- name: Windowsサーバーデプロイ
+  hosts: windows
+  vars:
+    site_phisical_path: 'c:\sites\hello'
+    site_log_path: 'c:\sites\logs'
+  tasks:
+    - name: IIS Webサーバーをインストール
+      win_feature:
+        name: "Web-Server"
+        state: present
+        restart: yes
+        include_sub_features: yes
+        include_management_tools: yes
+      register: install_iis
+
+    - name: サーバー・リスタートを待機
+      wait_for:
+        host: "{{ ansible_ssh_host|default(inventory_hostname) }}"
+        port: "{{ ansible_ssh_port|default(5986) }}"
+        delay: 30
+      when: install_iis.get('restart_needed')
+
+    - name: IISのデフォルトサイトを停止
+      win_iis_website:
+        name: Default Web Site
+        state: stopped
+
+    - name: HelloWorldサイト用ディレクトリを作成
+      win_file:
+        path: "{{ item }}"
+        state: directory
+      with_items:
+        - "{{ site_phisical_path }}"
+        - "{{ site_log_path }}"
+
+    - name: index.htmlをコピー
+      win_copy:
+        src: index.html
+        dest: 'c:\sites\hello\index.html'
+
+    - name: HelloWorldアプリケーションプールを作成
+      win_iis_webapppool:
+        name: "HelloWorldAppPool"
+        state: started
+        attributes: managedRuntimeVersion:v4.0
+
+    - name: HelloWorldサイトを作成
+      win_iis_website:
+        name: "HelloWorld"
+        state: started
+        port: 80
+        ip: "*"
+        application_pool: "HelloWorldAppPool"
+        physical_path: 'c:\sites\hello'
+        parameters: 'logfile.directory:c:\sites\logs'
