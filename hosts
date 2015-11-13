@@ -1,5 +1,0 @@
-[windows]
-<<YourWindowsHostname>> ansible_ssh_user=<<YourWindowsUserName>> ansible_ssh_password=<<YourWindowsPassword>>
-
-[windows:vars]
-ansible_connection=winrm
